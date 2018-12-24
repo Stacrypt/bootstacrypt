@@ -1,0 +1,94 @@
+version: '3'
+services:
+
+  consul:
+    container_name: consul.server
+    command: agent -server -bind 0.0.0.0 -client 0.0.0.0 -bootstrap-expect=1
+    image: consul:latest
+    volumes:
+      - ./etc/consul.server/config:/consul/config
+    ports:
+      - "9300:9300"
+      - "9500:9500"
+      - "9600:9600/udp"
+
+  vault:
+    container_name: vault.server
+    image: vault:latest
+    ports:
+      - "9200:8200"
+    volumes:
+      - ./etc/vault.server/config:/mnt/vault/config
+      - ./etc/vault.server/data:/mnt/vault/data
+      - ./etc/vault.server/logs:/mnt/vault/logs
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_LOCAL_CONFIG={"backend":{"consul":{"address":"${LOCAL_IP}:9500","advertise_addr":"http://${LOCAL_IP}", "path":"vault/"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}}}
+    command: server
+
+#  web:
+#    build: .
+#    ports:
+#      - "5000:5000"
+#    volumes:
+#      - .:/code
+#      - logvolume01:/var/log
+#    links:
+#      - redis
+
+  liquibook:
+    image: zouchao2010/liquibook:latest
+#    command: cd ~/liquibook/examples/depth_feed_publisher
+    working_dir: /root/liquibook/examples/depth_feed_publisher
+    command: ./depth_feed_publisher -p 9999
+#      - ./depth_feed_publisher -p 9999
+#      - ./depth_feed_subscriber -p 9999
+    tty: true
+    stdin_open: true
+
+  redis:
+    image: redis
+
+# Bitcoin
+  btc:
+    image: jeshan/bitcore-node:latest
+
+# Ethereum
+  geth:
+    image: ethereum/client-go
+
+  mist:
+    build: https://github.com/MarcoSpoerl/ethereum-mist-docker.git
+
+# Litecoin
+  ltc:
+    image: lukechilds/electrumx
+    environment:
+      - DAEMON_URL=http://user:pass@0.0.0.0
+#      - DAEMON_URL=http://user:pass@host:port
+      - COIN=Bitcoin
+    ports:
+      - 50002:50002
+    volumes:
+      - ./electrumx-btc:/data
+
+# Stellar
+  stellar:
+    container_name: stellar
+    build: https://github.com/stellar/docker-stellar-core-horizon.git
+    command: stellar/quickstart --testnet
+    ports:
+      - 8000:8000
+      - 11626:11626
+      - 11625:11625
+    environment:
+      - ./stellar:/opt/stellar
+
+# EOS
+  eos:
+
+# Tether
+
+volumes:
+  logvolume01: {}
